@@ -4,6 +4,12 @@
 
 技术栈：**FastAPI + LangGraph + 原生 JavaScript/CSS + 火山方舟 API**。无需 Node 构建、独立数据库服务、Redis 或 Docker。
 
+## 效果预览
+
+下图是火山方舟真实模式下的成品页：选题、文章、摘要、配图与图文编排全部完成后，可复制文章、打开完整 HTML 预览，或下载素材包。
+
+![工作台成品页](docs/验收截图.jpg)
+
 ## 启动
 
 Windows 双击 **`start.cmd`**，或在项目目录运行：
