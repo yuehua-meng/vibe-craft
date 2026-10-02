@@ -1,5 +1,7 @@
 # 上传图文 → 图文生成
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一个可直接运行的本地营销工作台。员工上传商品图片和文字，勾选平台，经过选题确认和文章审核，再生成摘要、配图及图文成品。
 
 技术栈：**FastAPI + LangGraph + 原生 JavaScript/CSS + 火山方舟 API**。无需 Node 构建、独立数据库服务、Redis 或 Docker。
@@ -115,8 +117,6 @@ node --check web/app.js
 - 不自动反复重试付费生图。失败时保留之前的审核结果，由员工发起当前节点重试，最多 3 次；超时后重试可能重复计费，应先检查供应商调用记录。
 - 前端采用轻量轮询更新进度；审核期间不会占用运行任务，后台 asyncio 调度允许三个平台并发运行。
 
-## 官方接口参考
+## 开源协议
 
-- [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
-- [LangGraph 人工中断与恢复](https://docs.langchain.com/oss/python/langgraph/interrupts)
-- [火山方舟图片生成接口](https://api.volcengine.com/api-explorer/?action=ImageGenerations&groupName=图片生成API&serviceCode=ark&version=2024-01-01)
+本项目采用 [MIT License](LICENSE) 开源，可自由使用、修改和分发，只需保留版权与许可声明。
