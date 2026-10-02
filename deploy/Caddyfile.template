@@ -2,7 +2,12 @@
 # 如需修改域名或访问口令：删除本文件后重新运行 ./deploy/deploy.sh
 __DOMAIN__ {
 	encode zstd gzip
-	basic_auth {
+	# 看板页面的 JS 调 admin API 时会自带 Authorization: Bearer <管理员 Key>，
+	# 这个头会顶掉浏览器缓存的 Basic 凭据，让 basic_auth 一直判定失败、
+	# 反复弹出登录框且关不掉。这两条路径改由网关自身的 Bearer 鉴权保护
+	# （静态资源不含机密，admin 接口没有管理员 Key 一律 401）。
+	@basic not path /gateway/admin/* /gateway/static/*
+	basic_auth @basic {
 		__BASIC_AUTH_USER__ __BASIC_AUTH_HASH__
 	}
 	# 模型网关看板：/gateway/* 剥掉前缀后转发到内部服务 gateway:8020。
