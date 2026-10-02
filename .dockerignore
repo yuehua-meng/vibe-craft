@@ -1,0 +1,15 @@
+.venv/
+.git/
+.github/
+.trae/
+data/
+docs/
+tests/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+pytest-cache-files-*/
+*.log
+.env
+*.md

@@ -30,7 +30,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe run.py
 ```
 
-要求 Python 3.11+；当前验证环境为 Python 3.13。默认单进程监听 `127.0.0.1`，只用于本地使用。
+要求 Python 3.11+；当前验证环境为 Python 3.13。默认单进程监听 `127.0.0.1`，容器化部署见下文[服务器部署](#服务器部署腾讯云-ubuntu--docker)。
 
 ## 使用流程
 
@@ -91,8 +91,11 @@ APP_PORT=8010
 │   └── config.py         # 环境配置与平台风格
 ├── web/                  # 工作台界面，不需要 npm install
 ├── tests/                # 工作流与接口测试
+├── deploy/               # 服务器部署：deploy.sh 与 Caddy 模板
 ├── docs/architecture.md  # Mermaid 架构和工作流
 ├── data/                 # 运行时素材，已忽略 Git
+├── Dockerfile
+├── docker-compose.yml    # app + Caddy 编排，见「服务器部署」
 ├── requirements.lock.txt # 已安装并验证的依赖快照
 ├── .env.example          # 无密钥的配置示例
 ├── run.py
@@ -116,6 +119,40 @@ node --check web/app.js
 - 本版无登录、企业权限和持久队列；数据已用 SQLite 持久化，适合单进程部署的内网小团队。若要开放给公司员工共同使用或扩展到多实例，需要增加身份权限体系，并把仓库升级为 PostgreSQL、Checkpointer 换成 PostgresSaver、引入外部队列。
 - 不自动反复重试付费生图。失败时保留之前的审核结果，由员工发起当前节点重试，最多 3 次；超时后重试可能重复计费，应先检查供应商调用记录。
 - 前端采用轻量轮询更新进度；审核期间不会占用运行任务，后台 asyncio 调度允许三个平台并发运行。
+
+## 服务器部署（腾讯云 Ubuntu + Docker）
+
+仓库自带容器化部署：应用只在 Docker 内网监听 8010，Caddy 负责 HTTPS 与入口鉴权，对外只暴露 80/443。应用本身没有登录体系，因此**不建议跳过 Basic Auth 直接暴露到公网**。
+
+前提：Ubuntu 22.04 / 24.04；腾讯云安全组放行 `80`、`443`；域名 A 记录已指向服务器。
+
+首次部署：
+
+```bash
+git clone https://github.com/yuehua-meng/vibe-craft.git ~/vibe-craft
+cd ~/vibe-craft
+cp .env.example .env && vi .env        # 填入 ARK_API_KEY
+chmod +x deploy/deploy.sh
+./deploy/deploy.sh                     # 未装 Docker 时，先执行 ./deploy/deploy.sh --install-docker
+```
+
+首次运行会依次询问域名、访问用户名与密码（密码不回显），生成 `deploy/Caddyfile` 后由 Caddy 自动签发 Let's Encrypt 证书。密码只落在服务器的 `.env` 与 `deploy/Caddyfile` 里，两者都已被 Git 忽略。
+
+日常更新只需再执行一次 `./deploy/deploy.sh`，它依次完成 `git pull` → 重建镜像 → 重启 → 健康检查；任一步失败会中断并输出日志。
+
+运维：
+
+```bash
+docker compose logs -f app      # 应用日志
+docker compose logs -f caddy    # 证书签发与访问日志
+docker compose restart app      # 重启应用
+tar czf ~/vibe-craft-data-$(date +%F).tar.gz data   # 备份业务数据与工作流断点
+rm deploy/Caddyfile && ./deploy/deploy.sh          # 重置访问用户名与密码
+```
+
+`data/` 保存 `app.db` 与 `checkpoints.db`，是唯一的持久化位置（bind mount 到宿主机），升级和重建容器都不要删除。
+
+注意：`deploy/Caddyfile` 由脚本首次生成。如果先手工执行了 `docker compose up`，Docker 会把不存在的挂载点建成目录，此时需要 `rm -rf deploy/Caddyfile` 后再运行脚本。
 
 ## 开源协议
 

@@ -1,0 +1,9 @@
+# 由 deploy/deploy.sh 自动生成，含密码哈希，已被 .gitignore 忽略。
+# 如需修改域名或访问口令：删除本文件后重新运行 ./deploy/deploy.sh
+__DOMAIN__ {
+	encode zstd gzip
+	basic_auth {
+		__BASIC_AUTH_USER__ __BASIC_AUTH_HASH__
+	}
+	reverse_proxy app:8010
+}
