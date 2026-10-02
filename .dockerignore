@@ -2,6 +2,7 @@
 .git/
 .github/
 .trae/
+agent-gateway/
 data/
 docs/
 tests/

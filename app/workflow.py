@@ -7,8 +7,9 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
+from . import config
 from .media import export_bundle, save_generated
-from .providers import ArkProvider, MockProvider, safe_error
+from .providers import ArkProvider, GatewayProvider, MockProvider, safe_error
 
 
 class ContentState(TypedDict, total=False):
@@ -40,7 +41,9 @@ STAGES = {
 class WorkflowService:
     def __init__(self, repo):
         self.repo = repo
-        self.providers = {'ark': ArkProvider(repo), 'mock': MockProvider(repo)}
+        # GATEWAY_MODE=1 时真实模式经模型网关调用（用量可在网关看板观测）；否则直连方舟。
+        real = GatewayProvider if config.GATEWAY_MODE else ArkProvider
+        self.providers = {'ark': real(repo), 'mock': MockProvider(repo)}
         self.checkpointer: AsyncSqliteSaver | None = None
         self.graph = None
         self.locks: dict[tuple, asyncio.Lock] = {}

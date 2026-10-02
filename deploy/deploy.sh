@@ -132,12 +132,17 @@ fi
 
 # ---------- 6. 结果与运维提示 ----------
 
-DOMAIN_SHOWN="$(awk '!/^#/ && NF {print $1; exit}' deploy/Caddyfile)"
+SITE_ADDR="$(awk '!/^#/ && NF {print $1; exit}' deploy/Caddyfile)"
+case "$SITE_ADDR" in
+    :*) ACCESS_URL="http://<服务器公网IP>${SITE_ADDR}" ;;
+    *) ACCESS_URL="https://${SITE_ADDR}" ;;
+esac
 
 cat <<EOF
 
 部署完成。
-  访问地址：https://${DOMAIN_SHOWN}
+  访问地址：${ACCESS_URL}
+  网关看板：${ACCESS_URL}/gateway/（需先启动 agent-gateway 栈）
   浏览器首次访问会要求输入刚才设置的用户名与密码。
 
 常用命令（在 $REPO_ROOT 下执行）：
@@ -150,6 +155,7 @@ cat <<EOF
 
 注意：
   - 腾讯云安全组需要放行 80 与 443，否则证书签发会失败。
+  - 看板返回 502，说明 agent-gateway 栈没启动：到它的目录执行 docker compose up -d。
   - data/ 保存 app.db 与 checkpoints.db，是唯一的持久化位置，升级时不要删除。
   - 应用内部端口固定 8010，请不要给 app 服务添加 ports 映射。
 EOF

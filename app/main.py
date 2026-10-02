@@ -54,7 +54,7 @@ def create_app(data_dir=None):
 
     @app.get('/api/config')
     def app_config():
-        return {'platforms': config.PLATFORMS, 'key_configured': bool(config.API_KEY),
+        return {'platforms': config.PLATFORMS, 'key_configured': config.provider_ready(),
                 'text_model': config.TEXT_MODEL, 'image_model': config.IMAGE_MODEL,
                 'storage': 'sqlite', 'max_upload_mb': 8, 'sample_asset': sample,
                 'workflow_engine': 'LangGraph StateGraph + AsyncSqliteSaver'}
@@ -82,8 +82,8 @@ def create_app(data_dir=None):
             raise HTTPException(400, '素材不存在，请重新上传')
         if len(set(payload.asset_ids)) != len(payload.asset_ids):
             raise HTTPException(400, '请勿重复选择同一张图片')
-        if payload.mode == 'ark' and not config.API_KEY:
-            raise HTTPException(400, '请先配置 ARK_API_KEY，或切换到演示模式')
+        if payload.mode == 'ark' and not config.provider_ready():
+            raise HTTPException(400, '请先配置真实模型凭据（ARK_API_KEY 或网关项目凭据），或切换到演示模式')
         if len(repo.tasks) >= 100:
             raise HTTPException(429, '本地原型最多保存100个任务，请清理 data 目录中的历史数据')
         task = repo.create(payload.model_dump())

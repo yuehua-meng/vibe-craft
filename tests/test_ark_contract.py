@@ -16,7 +16,7 @@ def test_ark_image_receives_summary_and_original_images(tmp_path):
     calls = []
     image = io.BytesIO()
     Image.new('RGB', (64,64)).save(image, 'PNG')
-    async def fake_request(endpoint, body, timeout=150):
+    async def fake_request(endpoint, body, timeout=150, headers=None):
         calls.append((endpoint, body))
         return {'data':[{'b64_json':base64.b64encode(image.getvalue()).decode()}]}
     provider.request = fake_request
@@ -34,7 +34,7 @@ def test_ark_topic_input_includes_original_images(tmp_path):
     repo = SqliteRepository(tmp_path)
     asset = make_sample(repo)
     provider = ArkProvider(repo)
-    async def fake_request(endpoint, body, timeout=150):
+    async def fake_request(endpoint, body, timeout=150, headers=None):
         assert endpoint == '/chat/completions'
         content = body['messages'][1]['content']
         assert content[1]['type'] == 'image_url'

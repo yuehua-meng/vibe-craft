@@ -5,5 +5,17 @@ __DOMAIN__ {
 	basic_auth {
 		__BASIC_AUTH_USER__ __BASIC_AUTH_HASH__
 	}
-	reverse_proxy app:8010
+	# 模型网关看板：/gateway/* 剥掉前缀后转发到内部服务 gateway:8020。
+	# 需要先启动 agent-gateway 栈（它加入本项目的 vibe-craft_web 网络），否则返回 502。
+	redir /gateway /gateway/ 308
+	# 网关的模型代理入口只给容器内网使用，不通过边缘代理对外暴露。
+	handle_path /gateway/v1/* {
+		respond 404
+	}
+	handle_path /gateway/* {
+		reverse_proxy gateway:8020
+	}
+	handle {
+		reverse_proxy app:8010
+	}
 }

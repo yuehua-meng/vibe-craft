@@ -9,3 +9,5 @@ data/*
 pytest-cache-files-*/
 # 部署时生成，包含 Basic Auth 密码哈希，不能提交
 deploy/Caddyfile
+# agent-gateway 是独立仓库（有自己的 .git），不纳入本仓库
+agent-gateway/
