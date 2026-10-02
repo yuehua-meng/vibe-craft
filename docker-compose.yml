@@ -31,7 +31,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # 挂整个 deploy 目录而不是单个文件：单文件 bind mount 按 inode 解析，
+      # 用 mv/重定向替换 Caddyfile 后容器里读到的仍是被 unlink 的旧文件，
+      # 表现为「改了 Caddyfile 但不生效」。
+      - ./deploy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
