@@ -26,7 +26,7 @@
 4. **`deploy/Caddyfile.template` + `deploy/deploy.sh`** —— 模板里不含任何密码；脚本运行时交互式生成真正的 `deploy/Caddyfile`（写入 bcrypt 哈希，该文件已 gitignore）。
 5. **`.dockerignore` / `.gitignore`** —— 构建上下文排除 `.venv`、`data/`；含密码哈希的 `Caddyfile` 永不进仓库。
 
-> 需要说清楚一点：**触发方式是"你在服务器上执行一条命令"，不是 push 自动上线**——这是你当初选的方案（另一条路是 GitHub Actions 接 SSH 自动部署，需要配 GitHub Secrets）。所以"自动化"体现在**一条命令完成全部更新动作**，而不是"提交即上线"。
+> 需要说清楚一点：**触发方式一律不是 push 自动上线**。有两种手动触发路径，行为完全一致（都是执行同一个 `deploy.sh`）：一是 SSH 上服务器执行一条命令；二是到 GitHub 的 Actions 页面点「Run workflow」（见第四节）。"自动化"体现在**一条命令完成全部更新动作**，而不是"提交即上线"。
 
 ## 二、`./deploy/deploy.sh` 一条命令内部做了 8 步（幂等，可反复执行）
 
@@ -54,3 +54,37 @@
 
 - **切到域名 + HTTPS** 时只需一条命令：`rm deploy/Caddyfile && ./deploy/deploy.sh`，它会重新问域名并自动签证书（记得先在安全组放行 **443**）。
 - 当前状态是"IP 模式的临时配置"，`deploy.sh` 的域名流程没有被走过；脚本末尾打印的地址在那时仍会写成 `https://xxx`，这是它按域名模式写死的输出
+
+## 四、GitHub Actions 手动部署（点按钮上线）
+
+`.github/workflows/deploy.yml` 提供第二种触发方式：不监听 push，只在 **Actions → Deploy → Run workflow** 点击时执行。runner 通过 SSH 登服务器跑 `./deploy/deploy.sh`，与手动执行完全同一条路径，因此幂等性、健康检查、失败即退出这些行为都一致。
+
+### 一次性配置：3 个仓库 Secret
+
+Settings → Secrets and variables → Actions → New repository secret：
+
+| Secret | 值 |
+| --- | --- |
+| `DEPLOY_HOST` | 服务器公网 IP |
+| `DEPLOY_USER` | `ubuntu` |
+| `DEPLOY_SSH_KEY` | 部署私钥的完整内容，含 `-----BEGIN/END OPENSSH PRIVATE KEY-----` 两行 |
+
+部署密钥已生成，私钥在本机 `C:\Users\<你>\.ssh\vibe_craft_deploy`（无口令，runner 无法输入口令），公钥已追加到服务器 `~/.ssh/authorized_keys`：
+
+```text
+注释标记     github-actions-deploy
+指纹         SHA256:djo+BRyptr8GR7sDtu03sdFZ7UyK0LRjLSxLKLODtYA
+```
+
+这个密钥是专用的、只用于部署。要撤销：删掉服务器 `~/.ssh/authorized_keys` 里那条 `github-actions-deploy`，并在 GitHub 删除这三个 Secret。密钥不要提交到仓库。
+
+### 触发
+
+在 `main` 分支上点 Run workflow 即可（`workflow_dispatch` 要求 workflow 文件已存在于默认分支，所以第一次要先把这个文件合进 main）。网关是另一个仓库，它的 Deploy 在 `yuehua-meng/agent-gateway` 的 Actions 页面。
+
+### 需要知道的边界
+
+- **腾讯云安全组要对 GitHub runner 放行 22 端口。** GitHub 托管 runner 的出口 IP 段很宽且会变，单机自用基本只能开 `0.0.0.0/0`。这是这套方案唯一的暴露面新增，用专用密钥可缓解（密钥只能登服务器，不能做别的）。
+- **服务器访问 `github.com` 会间歇性超时。** 实测同一分钟内会从连接超时跳到 200。命中时 `git pull` 报 `GnuTLS recv error (-110)`，因为 `set -e` + `&&`，脚本在拉码这步就退出，**不会重建容器，线上不受影响**；隔一会儿重新点一次即可。Docker 拉基础镜像不受影响，服务器配了腾讯云的 registry 镜像加速。
+- **同一 workflow 配了 `concurrency`**，连点两次不会交叉重建容器；job 超时 20 分钟，超过会中断。
+- `deploy.sh` 首次运行会交互式问域名和口令，非交互环境（runner）下会直接失败——服务器上 `deploy/Caddyfile` 已存在，不会走到这一步。真要重置口令，还是得上服务器手动跑。
